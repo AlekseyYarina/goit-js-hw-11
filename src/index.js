@@ -9,7 +9,7 @@ const lightbox = new simpleLightbox('.gallery a');
 
 const NotifyParams = {
   position: 'center-center',
-  timeout: 1500,
+  timeout: 750,
   width: '800x',
   fontSize: '18px',
   borderRadius: '7px',
