@@ -1,55 +1,62 @@
 import Notiflix from 'notiflix';
 import simpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
-
+import { refs } from './refs';
+import { appendMarkup, createMarkup } from './markup';
 import ImagesApi from './img-api';
 const imagesApi = new ImagesApi();
+const lightbox = new simpleLightbox('.gallery a');
 
-const refs = {
-  form: document.querySelector('#search-form-js'),
-  searchBtn: document.querySelector('#btn-search-js'),
-  loadMoreBtn: document.querySelector('#load-more-js'),
-  divImgContainer: document.querySelector('#gallery-js'),
-  likesContent: document.querySelector('.likes-content-js'),
-  viewsContent: document.querySelector('.views-content-js'),
-  commentsContent: document.querySelector('.comments-content-js'),
-  downloadsContent: document.querySelector('.downloads-content-js'),
+const NotifyParams = {
+  position: 'center-center',
+  timeout: 1500,
+  width: '800x',
+  fontSize: '18px',
+  borderRadius: '7px',
+  showOnlyTheLastOne: true,
+  backOverlay: true,
+  backOverlayColor: 'rgba(0,0,0,0.1)',
 };
 
 refs.form.addEventListener('submit', onSearch);
 refs.loadMoreBtn.addEventListener('click', onLoadMore);
 
-function onSearch(e) {
+async function onSearch(e) {
   e.preventDefault();
-  imagesApi.query = e.currentTarget.elements.searchQuery.value;
-  imagesApi.resetPage();
   hideLoadmoreBtn();
-  refs.divImgContainer.innerHTML = '';
-  imagesApi.fetchImages().then(data => {
+  pageClearing();
+  imagesApi.resetPage();
+  imagesApi.query = e.currentTarget.elements.searchQuery.value
+    .trim()
+    .toLowerCase();
+  if (checkEmptyRequest()) {
+    return;
+  }
+  try {
+    const data = await imagesApi.fetchImages();
     if (data.hits.length !== 0) {
       notifyQuantityOfMatches(data.total);
-      appendMarkup(data);
       showLoadmoreBtn();
-      const lightbox = new simpleLightbox('.gallery a');
+      appendMarkup(data);
+      lightbox.refresh();
+      checkEndImages(data);
     } else {
       notifyNoMatches();
     }
-  });
+  } catch (error) {
+    console.error('An error occurred:', error);
+  }
 }
 
-function onLoadMore() {
-  imagesApi.fetchImages().then(data => {
+async function onLoadMore() {
+  try {
+    const data = await imagesApi.fetchImages();
     appendMarkup(data);
-
-    const totalDisplayedImages =
-      document.querySelectorAll('.image-link').length;
-    const totalHits = data.total;
-
-    if (totalDisplayedImages >= totalHits) {
-      hideLoadmoreBtn();
-      notifyEndOfResults();
-    }
-  });
+    lightbox.refresh();
+    checkEndImages(data);
+  } catch (error) {
+    console.error('An error occurred:', error);
+  }
 }
 
 function showLoadmoreBtn() {
@@ -63,61 +70,46 @@ function hideLoadmoreBtn() {
   refs.loadMoreBtn.classList.add('visually-hidden');
 }
 
+function pageClearing() {
+  refs.divImgContainer.innerHTML = '';
+}
+
+function checkEmptyRequest() {
+  if (imagesApi.query === '') {
+    notifyEmptyRequest();
+    return true;
+  }
+  return false;
+}
+
+function checkEndImages(data) {
+  const totalDisplayedImages = document.querySelectorAll('.image-link').length;
+  const totalHits = data.total;
+  totalDisplayedImages >= totalHits &&
+    (hideLoadmoreBtn(), notifyEndOfResults());
+}
+
+function notifyEmptyRequest() {
+  Notiflix.Notify.failure('Please enter your request!', NotifyParams);
+}
+
 function notifyEndOfResults() {
   Notiflix.Notify.info(
-    "We're sorry, but you've reached the end of search results."
+    "We're sorry, but you've reached the end of search results.",
+    NotifyParams
   );
 }
 
 function notifyQuantityOfMatches(totalHits) {
-  Notiflix.Notify.success(`Hooray! We found ${totalHits} images.`);
+  Notiflix.Notify.success(
+    `Hooray! We found ${totalHits} images.`,
+    NotifyParams
+  );
 }
 
 function notifyNoMatches() {
   Notiflix.Notify.failure(
-    'Sorry, there are no images matching your search query. Please try again.'
+    'Sorry, there are no images matching your search query. Please try again.',
+    NotifyParams
   );
-}
-
-function appendMarkup(data) {
-  refs.divImgContainer.insertAdjacentHTML('beforeend', createMarkup(data));
-}
-
-function createMarkup(data) {
-  return data.hits
-    .map(
-      ({
-        largeImageURL,
-        webformatURL,
-        tags,
-        likes,
-        views,
-        comments,
-        downloads,
-      }) =>
-        `<a href="${largeImageURL}" class="image-link">
-    <div class="image-item">
-      <img class = "img" src="${webformatURL}" alt="${tags}" loading="lazy" />
-       <div class="info-overlay">
-        <div class="info-item">
-          <p class="item-desk">Likes</p>
-          <p class="likes-content-js">${likes}</p>
-        </div>
-        <div class="info-item">
-        <p class="item-desk">Views</p>
-          <p class="views-content-js">${views}</p>
-        </div>
-        <div class="info-item">
-        <p class="item-desk">Comments</p>
-          <p class="comments-content-js">${comments}</p>
-        </div>
-        <div class="info-item">
-        <p class="item-desk">Downloads</p>
-          <p class="downloads-content-js">${downloads}</p>
-        </div>
-      </div>
-    </div>
-  </a>`
-    )
-    .join('');
 }
