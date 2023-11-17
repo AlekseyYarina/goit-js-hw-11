@@ -7,4 +7,5 @@ export const refs = {
   viewsContent: document.querySelector('.views-content-js'),
   commentsContent: document.querySelector('.comments-content-js'),
   downloadsContent: document.querySelector('.downloads-content-js'),
+  target: document.querySelector('.js-guard'),
 };

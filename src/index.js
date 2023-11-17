@@ -4,6 +4,7 @@ import 'simplelightbox/dist/simple-lightbox.min.css';
 import { refs } from './refs';
 import { appendMarkup, createMarkup } from './markup';
 import ImagesApi from './img-api';
+import { observer, onLoad } from './infinity-scroll';
 const imagesApi = new ImagesApi();
 const lightbox = new simpleLightbox('.gallery a');
 
@@ -38,6 +39,7 @@ async function onSearch(e) {
       notifyQuantityOfMatches(data.total);
       showLoadmoreBtn();
       appendMarkup(data);
+      observer.observe(refs.target);
       lightbox.refresh();
       checkEndImages(data);
     } else {
@@ -51,9 +53,10 @@ async function onSearch(e) {
 async function onLoadMore() {
   try {
     const data = await imagesApi.fetchImages();
-    appendMarkup(data);
+    // appendMarkup(data);
+  onLoad(observer)
     lightbox.refresh();
-    checkEndImages(data);
+    checkEndImages(data); 
   } catch (error) {
     console.error('An error occurred:', error);
   }
