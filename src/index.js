@@ -2,9 +2,8 @@ import Notiflix from 'notiflix';
 import simpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 import { refs } from './refs';
-import { appendMarkup, createMarkup } from './markup';
+import { appendMarkup } from './markup';
 import ImagesApi from './img-api';
-import { observer, onLoad } from './infinity-scroll';
 const imagesApi = new ImagesApi();
 const lightbox = new simpleLightbox('.gallery a');
 
@@ -21,6 +20,15 @@ const NotifyParams = {
 
 refs.form.addEventListener('submit', onSearch);
 refs.loadMoreBtn.addEventListener('click', onLoadMore);
+
+let options = {
+  root: null,
+  rootMargin: "800px",
+  threshold: 1.0,
+};
+
+let observer = new IntersectionObserver (onLoad, options);
+
 
 async function onSearch(e) {
   e.preventDefault();
@@ -39,8 +47,8 @@ async function onSearch(e) {
       notifyQuantityOfMatches(data.total);
       showLoadmoreBtn();
       appendMarkup(data);
-      observer.observe(refs.target);
       lightbox.refresh();
+      observer.observe(refs.target);
       checkEndImages(data);
     } else {
       notifyNoMatches();
@@ -53,13 +61,22 @@ async function onSearch(e) {
 async function onLoadMore() {
   try {
     const data = await imagesApi.fetchImages();
-    // appendMarkup(data);
-  onLoad(observer)
+    appendMarkup(data);
     lightbox.refresh();
-    checkEndImages(data); 
+    checkEndImages(data);
   } catch (error) {
     console.error('An error occurred:', error);
   }
+}
+
+async function onLoad(entries, observer) {
+  entries.forEach(async (entry) => {
+      if (entry.isIntersecting) {
+          const data = await imagesApi.fetchImages();
+          appendMarkup(data);
+          lightbox.refresh();
+      }
+  });
 }
 
 function showLoadmoreBtn() {
